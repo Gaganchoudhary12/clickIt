@@ -31,6 +31,7 @@ Requirements:
 Install dependencies and start Metro:
 
 ```sh
+nvm use
 npm install
 npm start
 ```
@@ -82,6 +83,10 @@ Google Play upload key:
 The signed bundle is written to
 `android/app/build/outputs/bundle/release/app-release.aab`. The bundle task fails
 with a clear message if production signing is not configured.
+
+Gradle automatically uses the Node version pinned in `.nvmrc`, even when it is
+started by Android Studio or a shell whose default Node is older. CI can override
+the binary by setting `NODE_BINARY` to an absolute Node 22 path.
 
 Before creating the Play Console app, replace the generic `com.clickit`
 application ID with a permanent reverse-domain package ID that you control.

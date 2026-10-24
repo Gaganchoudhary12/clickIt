@@ -467,11 +467,11 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
       if (radiusPx > 0f) {
         paint.style = Paint.Style.FILL
-        paint.color = Color.argb(42, 124, 92, 252)
+        paint.color = Color.argb(42, 244, 114, 182)
         canvas.drawCircle(centerX, centerY, radiusPx, paint)
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = dpFloat(1.5f)
-        paint.color = Color.argb(190, 124, 92, 252)
+        paint.color = Color.argb(190, 244, 114, 182)
         canvas.drawCircle(centerX, centerY, radiusPx, paint)
       }
 
@@ -491,9 +491,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
   }
 
   companion object {
-    private const val COLOR_START = 0xFF23B26D.toInt()
-    private const val COLOR_STOP = 0xFFF05252.toInt()
-    private const val COLOR_TARGET = 0xFF7C5CFC.toInt()
+    private const val COLOR_START = 0xFFB52B75.toInt()
+    private const val COLOR_STOP = 0xFFC73C57.toInt()
+    private const val COLOR_TARGET = 0xFFB52B75.toInt()
     private val CLICK_LOOP_TOKEN = Any()
 
     @Volatile
