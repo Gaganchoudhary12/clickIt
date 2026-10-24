@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">ClickIt</string>
+    <string name="accessibility_service_label">ClickIt auto clicker</string>
+    <string name="accessibility_service_description">Shows a movable target and floating control, then performs taps only when you start the auto clicker.</string>
+    <string name="target_content_description">Click target. Drag to position.</string>
+    <string name="control_content_description">ClickIt floating control. Drag to move.</string>
+    <string name="start_content_description">Start automatic clicking</string>
+    <string name="stop_content_description">Stop automatic clicking</string>
+    <string name="clicking_started">ClickIt started</string>
+    <string name="clicking_stopped">ClickIt stopped</string>
+</resources>
