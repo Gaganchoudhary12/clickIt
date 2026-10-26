@@ -64,13 +64,14 @@ npm test -- --runInBand --no-watchman
 npm run android:apk
 ```
 
-An unsigned release APK is written to
-`android/app/build/outputs/apk/release/app-release-unsigned.apk` until production
-signing is configured.
+An installable standalone APK is written to
+`android/app/build/outputs/apk/release/app-release.apk`. Without production
+signing configuration, APK builds use the included local test key and must not
+be uploaded to Google Play.
 
 ## Google Play bundle and signing
 
-Release builds never use the included debug key. To configure your private
+Google Play bundles never use the included debug key. To configure your private
 Google Play upload key:
 
 1. Generate and securely back up an upload keystore.

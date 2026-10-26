@@ -139,9 +139,11 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            if (releaseSigningReady) {
-                signingConfig signingConfigs.release
-            }
+            // Make assembleRelease installable for direct device testing while
+            // keeping bundleRelease protected by verifyReleaseSigning below.
+            signingConfig releaseSigningReady
+                ? signingConfigs.release
+                : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }

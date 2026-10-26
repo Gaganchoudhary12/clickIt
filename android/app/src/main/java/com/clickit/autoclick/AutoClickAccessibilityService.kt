@@ -4,11 +4,13 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.Rect
-import android.graphics.drawable.GradientDrawable
+import android.graphics.RectF
+import android.graphics.Shader
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -19,7 +21,6 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
-import android.widget.TextView
 import android.widget.Toast
 import kotlin.math.PI
 import kotlin.math.cos
@@ -36,7 +37,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
   private val dragSlop by lazy { ViewConfiguration.get(this).scaledTouchSlop }
 
   private var settings = ClickSettings(intervalMs = 1_000L, radiusDp = 12f)
-  private var bubbleView: TextView? = null
+  private var bubbleView: ControlBubbleView? = null
   private var targetView: TargetView? = null
   private var bubbleParams: WindowManager.LayoutParams? = null
   private var targetParams: WindowManager.LayoutParams? = null
@@ -293,11 +294,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
       y >= location[1] && y <= location[1] + view.height
   }
 
-  private fun createBubble(): TextView = TextView(this).apply {
-    gravity = Gravity.CENTER
-    setTextColor(Color.WHITE)
-    textSize = 25f
-    elevation = dpFloat(10f)
+  private fun createBubble(): ControlBubbleView = ControlBubbleView().apply {
     contentDescription = getString(com.clickit.R.string.control_content_description)
   }
 
@@ -317,6 +314,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
     view.setOnTouchListener { touchedView, event ->
       when (event.actionMasked) {
         MotionEvent.ACTION_DOWN -> {
+          touchedView.isPressed = true
           downRawX = event.rawX
           downRawY = event.rawY
           startX = params.x
@@ -332,6 +330,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
               kotlin.math.abs(deltaY) > dragSlop)
           ) {
             dragged = true
+            touchedView.isPressed = false
           }
           params.x = startX + deltaX.roundToInt()
           params.y = startY + deltaY.roundToInt()
@@ -341,6 +340,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         }
 
         MotionEvent.ACTION_UP -> {
+          touchedView.isPressed = false
           if (dragged) {
             AutoClickSettings.preferences(this).edit()
               .putInt(xKey, params.x)
@@ -353,7 +353,10 @@ class AutoClickAccessibilityService : AccessibilityService() {
           true
         }
 
-        MotionEvent.ACTION_CANCEL -> true
+        MotionEvent.ACTION_CANCEL -> {
+          touchedView.isPressed = false
+          true
+        }
         else -> false
       }
     }
@@ -382,8 +385,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
   private fun updateRunningAppearance() {
     val bubble = bubbleView ?: return
-    bubble.text = if (running) "■" else "▶"
-    bubble.background = circleDrawable(if (running) COLOR_STOP else COLOR_START)
+    bubble.updateRunningState(running)
     bubble.contentDescription = getString(
       if (running) com.clickit.R.string.stop_content_description
       else com.clickit.R.string.start_content_description,
@@ -436,15 +438,106 @@ class AutoClickAccessibilityService : AccessibilityService() {
     return Rect(0, 0, metrics.widthPixels, metrics.heightPixels)
   }
 
-  private fun circleDrawable(color: Int) = GradientDrawable().apply {
-    shape = GradientDrawable.OVAL
-    setColor(color)
-    setStroke(dp(2f), Color.argb(90, 255, 255, 255))
-  }
-
   private fun dp(value: Float): Int = dpFloat(value).roundToInt()
 
   private fun dpFloat(value: Float): Float = value * density
+
+  private inner class ControlBubbleView : View(this) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val iconPath = Path()
+    private var showingStop = false
+
+    init {
+      isClickable = true
+      setLayerType(LAYER_TYPE_SOFTWARE, null)
+    }
+
+    fun updateRunningState(running: Boolean) {
+      showingStop = running
+      invalidate()
+    }
+
+    override fun performClick(): Boolean {
+      super.performClick()
+      return true
+    }
+
+    override fun onDraw(canvas: Canvas) {
+      super.onDraw(canvas)
+      val centerX = width / 2f
+      val centerY = height / 2f
+      val pressedInset = if (isPressed) dpFloat(1f) else 0f
+      val radius = minOf(width, height) / 2f - dpFloat(5.5f) - pressedInset
+      val startColor = if (showingStop) COLOR_STOP_TOP else COLOR_START_TOP
+      val endColor = if (showingStop) COLOR_STOP_BOTTOM else COLOR_START_BOTTOM
+
+      paint.style = Paint.Style.FILL
+      paint.shader = LinearGradient(
+        centerX - radius,
+        centerY - radius,
+        centerX + radius,
+        centerY + radius,
+        startColor,
+        endColor,
+        Shader.TileMode.CLAMP,
+      )
+      paint.setShadowLayer(
+        dpFloat(4f),
+        0f,
+        dpFloat(2f),
+        Color.argb(115, 22, 6, 24),
+      )
+      canvas.drawCircle(centerX, centerY, radius, paint)
+      paint.clearShadowLayer()
+      paint.shader = null
+
+      paint.style = Paint.Style.STROKE
+      paint.strokeWidth = dpFloat(1f)
+      paint.color = if (showingStop) COLOR_STOP_BORDER else COLOR_START_BORDER
+      canvas.drawCircle(centerX, centerY, radius - dpFloat(0.75f), paint)
+
+      paint.style = Paint.Style.FILL
+      paint.color = Color.WHITE
+      if (showingStop) {
+        val barWidth = dpFloat(5f)
+        val halfHeight = dpFloat(9f)
+        val halfGap = dpFloat(2.5f)
+        val iconCornerRadius = dpFloat(1.5f)
+        canvas.drawRoundRect(
+          RectF(
+            centerX - halfGap - barWidth,
+            centerY - halfHeight,
+            centerX - halfGap,
+            centerY + halfHeight,
+          ),
+          iconCornerRadius,
+          iconCornerRadius,
+          paint,
+        )
+        canvas.drawRoundRect(
+          RectF(
+            centerX + halfGap,
+            centerY - halfHeight,
+            centerX + halfGap + barWidth,
+            centerY + halfHeight,
+          ),
+          iconCornerRadius,
+          iconCornerRadius,
+          paint,
+        )
+      } else {
+        val halfHeight = dpFloat(9f)
+        val iconWidth = dpFloat(16f)
+        val left = centerX - iconWidth / 3f
+        iconPath.reset()
+        iconPath.moveTo(left, centerY - halfHeight)
+        iconPath.lineTo(left, centerY + halfHeight)
+        iconPath.lineTo(left + iconWidth, centerY)
+        iconPath.close()
+        canvas.drawPath(iconPath, paint)
+      }
+    }
+  }
 
   private inner class TargetView : View(this) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -491,8 +584,12 @@ class AutoClickAccessibilityService : AccessibilityService() {
   }
 
   companion object {
-    private const val COLOR_START = 0xFFB52B75.toInt()
-    private const val COLOR_STOP = 0xFFC73C57.toInt()
+    private const val COLOR_START_TOP = 0xFFE13A8C.toInt()
+    private const val COLOR_START_BOTTOM = 0xFF9C1F68.toInt()
+    private const val COLOR_START_BORDER = 0xCCF9A8D4.toInt()
+    private const val COLOR_STOP_TOP = 0xFFF05272.toInt()
+    private const val COLOR_STOP_BOTTOM = 0xFFB82049.toInt()
+    private const val COLOR_STOP_BORDER = 0xCCFDA4AF.toInt()
     private const val COLOR_TARGET = 0xFFB52B75.toInt()
     private val CLICK_LOOP_TOKEN = Any()
 
